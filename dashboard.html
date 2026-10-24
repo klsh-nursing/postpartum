@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard ติดตามมารดาและทารกหลังคลอด | รพ.กมลาไสย</title>
+
+<!-- ไลบรารีภายนอก: Bootstrap 5, Chart.js, SweetAlert2, ฟอนต์ Sarabun -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
+
+<script>
+  /* =====================================================================
+     ตั้งค่า URL ของ Web App (Code.gs) — แก้ที่นี่ที่เดียว
+     ===================================================================== */
+  const API_URL = 'https://script.google.com/macros/s/AKfycbyfZfb0EvP0JAL5UBWu0kzgXi2cd2S6mOzVl8-qogiSDHxGOn0kZVOsCSDQMI_xNeJdfA/exec';
+  const FORM_PAGE = 'form.html'; // หน้าแบบฟอร์มส่งต่อ (อยู่โฟลเดอร์เดียวกัน)
+</script>
+
+<style>
+  :root {
+    --pink: #C2185B; --pink-dark: #8E0F42; --pink-soft: #FCE4EE; --pink-line: #EBD3DE;
+    --lav: #EDE7FF; --lav-ink: #4A2F9E; --peach: #FFE9DC; --peach-ink: #A3461A;
+    --mint: #DDF5EC; --mint-ink: #17694D; --sky: #E0F0FF; --sky-ink: #1A5596;
+    --sun: #FFF3CC; --sun-ink: #7A5600; --ink: #3A2A33; --muted: #6F5A66; --bg: #FFF5F8;
+  }
+  body { font-family: 'Sarabun', sans-serif; background: var(--bg); color: var(--ink); font-size: 16px; }
+  .wrap { max-width: 1240px; }
+  .topbar { background: #fff; border-bottom: 1px solid var(--pink-line); position: sticky; top: 0; z-index: 1030; }
+  .brand { font-weight: 700; color: var(--pink-dark); text-decoration: none; }
+  .user-chip { background: var(--pink-soft); color: var(--pink-dark); border-radius: 999px; padding: 6px 14px; font-weight: 600; font-size: 14px; }
+
+  .hero { background: var(--pink); color: #fff; border-radius: 24px; padding: 24px 28px; }
+  .hero h1 { font-size: clamp(22px, 3.4vw, 30px); font-weight: 700; margin: 0; }
+  .hero .form-select { min-height: 42px; border-radius: 12px; border: 0; }
+
+  .card-x { background: #fff; border-radius: 20px; padding: 22px; border: 1px solid #F6DCE7; box-shadow: 0 8px 24px rgba(194,24,91,.06); }
+  .card-x h2 { font-size: 19px; font-weight: 700; margin: 0; }
+  .sub { font-size: 14px; color: var(--muted); }
+
+  /* KPI */
+  .kpi { display: flex; gap: 14px; align-items: center; height: 100%; }
+  .kpi .ico { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex: none; }
+  .kpi .num { font-size: 30px; font-weight: 700; line-height: 1.1; }
+  .kpi .lbl { font-size: 14px; color: var(--muted); }
+
+  .chart-box { position: relative; height: 280px; }
+  details.tbl summary { cursor: pointer; font-size: 14px; color: var(--pink-dark); font-weight: 600; margin-top: 10px; }
+  details.tbl table { font-size: 14px; }
+
+  /* ฟอร์ม */
+  .form-label { font-weight: 500; margin-bottom: 6px; }
+  .form-control, .form-select { border: 1.5px solid var(--pink-line); border-radius: 12px; min-height: 44px; background-color: #FFFBFD; }
+  .form-control:focus, .form-select:focus { border-color: var(--pink); box-shadow: 0 0 0 .2rem rgba(194,24,91,.15); }
+  .req { color: var(--pink); }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill { position: relative; }
+  .pill input { position: absolute; opacity: 0; inset: 0; pointer-events: none; }
+  .pill label { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 8px 14px; border: 1.5px solid var(--pink-line); border-radius: 999px; background: #fff; cursor: pointer; }
+  .pill label::before { content: ''; width: 17px; height: 17px; border: 2px solid #D9B3C4; border-radius: 50%; flex: none; }
+  .pill input[type=checkbox] + label::before { border-radius: 5px; }
+  .pill input:checked + label { border-color: var(--pink); background: var(--pink-soft); color: var(--pink-dark); font-weight: 600; }
+  .pill input:checked + label::before { background: var(--pink); border-color: var(--pink); box-shadow: inset 0 0 0 3px #fff; }
+  .pill input:focus-visible + label { outline: 3px solid rgba(194,24,91,.35); outline-offset: 2px; }
+  .is-invalid-group .pill label { border-color: #dc3545; }
+
+  /* ปุ่ม */
+  .btn-pink { background: var(--pink); color: #fff; border: 0; border-radius: 12px; font-weight: 700; min-height: 44px; padding: 8px 20px; }
+  .btn-pink:hover, .btn-pink:focus { background: var(--pink-dark); color: #fff; }
+  .btn-pink:disabled { background: #D48AA8; color: #fff; }
+  .btn-soft { background: #fff; border: 1.5px solid var(--pink-line); border-radius: 12px; font-weight: 600; min-height: 44px; padding: 8px 16px; color: var(--ink); }
+  .btn-soft:hover { background: var(--pink-soft); }
+  .btn-green { background: #17694D; color: #fff; border: 0; border-radius: 12px; font-weight: 700; min-height: 44px; padding: 8px 20px; }
+  .btn-green:hover, .btn-green:focus { background: #0E4A36; color: #fff; }
+  .btn-green:disabled { background: #7FB7A2; color: #fff; }
+
+  /* ตารางรายชื่อ */
+  .tbl-cases { font-size: 15px; }
+  .tbl-cases th { font-weight: 600; color: var(--muted); font-size: 14px; white-space: nowrap; background: #FFF9FB; }
+  .tbl-cases tbody tr { cursor: pointer; }
+  .tbl-cases tbody tr:hover { background: #FFF3F8; }
+  .name-btn { background: none; border: 0; padding: 0; text-align: left; font-weight: 600; color: var(--ink); }
+  .name-btn:hover { color: var(--pink); text-decoration: underline; }
+  .chip-f { border: 1.5px solid var(--pink-line); background: #fff; border-radius: 999px; padding: 6px 14px; font-size: 14px; min-height: 38px; font-weight: 500; }
+  .chip-f.active { background: var(--pink); color: #fff; border-color: var(--pink); }
+
+  /* สถานะ */
+  .st { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .st-sent { background: var(--pink-soft); color: var(--pink-dark); }
+  .st-acked { background: var(--mint); color: var(--mint-ink); }
+  .st-follow { background: var(--sky); color: var(--sky-ink); }
+  .st-done { background: #C8EEDD; color: #0E4A36; }
+  .st-back { background: var(--pink); color: #fff; }
+  .st-unreach { background: #EFEAEC; color: #5A4A52; }
+  .st-closed { background: var(--ink); color: #fff; }
+  .overdue { color: #A3461A; font-size: 13px; font-weight: 600; }
+
+  /* รายละเอียด */
+  .kv { display: flex; flex-direction: column; gap: 2px; }
+  .kv .k { font-size: 13px; color: var(--muted); }
+  .kv .v { font-size: 16px; font-weight: 500; word-break: break-word; }
+  .sec-title { font-size: 16px; font-weight: 700; color: var(--pink-dark); border-bottom: 1px solid var(--pink-line); padding-bottom: 6px; margin: 18px 0 12px; }
+  .nav-pills .nav-link { color: var(--ink); font-weight: 600; border-radius: 12px; }
+  .nav-pills .nav-link.active { background: var(--pink); }
+  .visit-card { border: 1px solid #D3EEE1; border-radius: 16px; padding: 16px; background: #FAFFFC; }
+  .ack-card { border: 1.5px dashed #8FCFB2; border-radius: 16px; padding: 16px; background: #F3FBF7; }
+  .timeline { border-left: 3px solid var(--pink-line); margin-left: 8px; padding-left: 18px; }
+  .timeline .item { position: relative; padding-bottom: 14px; }
+  .timeline .item::before { content: ''; position: absolute; left: -26px; top: 6px; width: 13px; height: 13px; border-radius: 50%; background: var(--pink); border: 3px solid #fff; }
+  .modal-content { border: 0; border-radius: 22px; }
+  .hidden { display: none !important; }
+  @media (max-width: 576px) { .card-x { padding: 16px; border-radius: 16px; } .hero { padding: 18px; } .kpi .num { font-size: 26px; } }
+</style>
+</head>
+<body>
+
+<!-- ============================ แถบด้านบน ============================ -->
+<nav class="topbar py-2">
+  <div class="container wrap d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <a class="brand" href="#"><i class="bi bi-heart-pulse-fill"></i> ระบบติดตามหลังคลอด รพ.กมลาไสย</a>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <a class="btn btn-sm btn-soft hidden" style="min-height:38px" id="lnkForm" href=""><i class="bi bi-plus-circle"></i> ส่งต่อเคสใหม่</a>
+      <span class="user-chip hidden" id="userChip"><i class="bi bi-person-circle"></i> <span id="userName"></span></span>
+      <button class="btn btn-sm btn-soft hidden" style="min-height:38px" id="btnPw" type="button" title="เปลี่ยนรหัสผ่าน"><i class="bi bi-key"></i><span class="d-none d-md-inline"> เปลี่ยนรหัสผ่าน</span></button>
+      <button class="btn btn-sm btn-soft hidden" style="min-height:38px" id="btnLogout" type="button"><i class="bi bi-box-arrow-right"></i> ออกจากระบบ</button>
+      <button class="btn btn-sm btn-pink" style="min-height:38px" id="btnLogin" type="button"><i class="bi bi-box-arrow-in-right"></i> เข้าสู่ระบบ</button>
+    </div>
+  </div>
+</nav>
+
+<main class="container wrap py-4">
+
+  <!-- ============================ หัว + ตัวกรองปีงบ ============================ -->
+  <header class="hero d-flex flex-wrap gap-3 justify-content-between align-items-end mb-4">
+    <div>
+      <div class="opacity-75 fw-medium">โรงพยาบาลกมลาไสย จ.กาฬสินธุ์ · งานอนามัยแม่และเด็ก</div>
+      <h1 class="mt-1">ติดตามมารดาและทารกหลังคลอด</h1>
+      <div class="opacity-75 small mt-1" id="updatedAt">กำลังโหลดข้อมูล...</div>
+    </div>
+    <div class="d-flex gap-2 align-items-end">
+      <div><label class="small fw-semibold d-block mb-1" for="fySelect">ปีงบประมาณ</label>
+        <select class="form-select" id="fySelect" style="min-width:170px"><option value="">ทุกปีงบประมาณ</option></select></div>
+      <button class="btn btn-light fw-semibold" style="min-height:42px;border-radius:12px" id="btnRefresh" type="button" title="รีเฟรช"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button>
+    </div>
+  </header>
+
+  <!-- ============================ KPI ============================ -->
+  <div class="row g-3 mb-4" id="kpiRow"></div>
+
+  <!-- ============================ กราฟ ============================ -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-lg-7"><div class="card-x h-100">
+      <h2>จำนวนมารดาหลังคลอด แยกตาม รพ.สต.</h2><div class="sub mb-2">นับตาม รพ.สต. ที่รับผิดชอบ</div>
+      <div class="chart-box" style="height:340px"><canvas id="chRpst" role="img" aria-label="กราฟจำนวนมารดาแยกตาม รพ.สต."></canvas></div>
+      <details class="tbl"><summary>ดูเป็นตาราง</summary><div id="tblRpst"></div></details></div></div>
+    <div class="col-12 col-lg-5"><div class="card-x h-100">
+      <h2>แยกตามไตรมาส</h2><div class="sub mb-2">ไตรมาสปีงบประมาณ นับจากวันคลอด</div>
+      <div class="chart-box" style="height:340px"><canvas id="chQuarter" role="img" aria-label="กราฟจำนวนมารดาแยกตามไตรมาส"></canvas></div>
+      <details class="tbl"><summary>ดูเป็นตาราง</summary><div id="tblQuarter"></div></details></div></div>
+    <div class="col-12 col-md-6 col-lg-4"><div class="card-x h-100">
+      <h2>ประเภทการคลอด</h2><div class="sub mb-2">สัดส่วนตามวิธีการคลอด</div>
+      <div class="chart-box"><canvas id="chMethod" role="img" aria-label="กราฟสัดส่วนประเภทการคลอด"></canvas></div>
+      <details class="tbl"><summary>ดูเป็นตาราง</summary><div id="tblMethod"></div></details></div></div>
+    <div class="col-12 col-md-6 col-lg-4"><div class="card-x h-100">
+      <h2>ระดับความเสี่ยงของครรภ์</h2><div class="sub mb-2">ปกติ / เสี่ยง / เสี่ยงสูง</div>
+      <div class="chart-box"><canvas id="chRisk" role="img" aria-label="กราฟระดับความเสี่ยง"></canvas></div>
+      <details class="tbl"><summary>ดูเป็นตาราง</summary><div id="tblRisk"></div></details></div></div>
+    <div class="col-12 col-lg-4"><div class="card-x h-100">
+      <h2>สถานะการติดตาม</h2><div class="sub mb-2">จำนวนเคสตามสถานะปัจจุบัน</div>
+      <div class="chart-box"><canvas id="chStatus" role="img" aria-label="กราฟสถานะการติดตาม"></canvas></div>
+      <details class="tbl"><summary>ดูเป็นตาราง</summary><div id="tblStatus"></div></details></div></div>
+  </div>
+
+  <!-- ============================ ยังไม่ Login ============================ -->
+  <section class="card-x text-center py-5" id="guestBox">
+    <div class="mx-auto mb-2 d-flex align-items-center justify-content-center" style="width:56px;height:56px;border-radius:16px;background:var(--pink-soft);color:var(--pink);font-size:26px"><i class="bi bi-shield-lock"></i></div>
+    <h2 class="mb-1">รายชื่อและข้อมูลรายบุคคล</h2>
+    <p class="sub mb-3">เข้าสู่ระบบเพื่อดูรายชื่อ รับเรื่อง และบันทึกเยี่ยมบ้าน</p>
+    <button class="btn btn-pink px-4" type="button" id="btnLogin2"><i class="bi bi-box-arrow-in-right"></i> เข้าสู่ระบบ</button>
+  </section>
+
+  <!-- ============================ รายชื่อเคส (หลัง Login) ============================ -->
+  <section class="card-x hidden" id="caseBox">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+      <div><h2>รายชื่อมารดาหลังคลอด</h2><div class="sub" id="caseSub"></div></div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 mb-3" id="statusChips"></div>
+    <div class="row g-2 mb-3">
+      <div class="col-12 col-md-5"><input class="form-control" id="q" type="search" placeholder="ค้นหา ชื่อ / HN / AN / เลขบัตร / เบอร์โทร" aria-label="ค้นหา"></div>
+      <div class="col-6 col-md-4" id="rpstFilterWrap"><select class="form-select" id="rpstFilter" aria-label="กรอง รพ.สต."><option value="">ทุก รพ.สต.</option></select></div>
+      <div class="col-6 col-md-3 d-flex align-items-center"><div class="form-check form-switch m-0">
+        <input class="form-check-input" type="checkbox" id="overdueOnly"><label class="form-check-label" for="overdueOnly">เฉพาะเคสค้าง</label></div></div>
+    </div>
+    <div class="table-responsive">
+      <table class="table tbl-cases align-middle mb-0">
+        <thead><tr><th>มารดา</th><th class="d-none d-md-table-cell">รพ.สต.</th><th>วันคลอด</th><th class="d-none d-lg-table-cell">วิธีคลอด</th>
+          <th class="d-none d-lg-table-cell">ความเสี่ยง</th><th class="text-center">เยี่ยม</th><th>สถานะ</th></tr></thead>
+        <tbody id="caseRows"></tbody>
+      </table>
+    </div>
+    <div class="text-center mt-3"><button class="btn btn-soft hidden" id="btnMore" type="button">แสดงเพิ่ม</button></div>
+  </section>
+</main>
+
+<!-- ============================ หน้าต่าง Login ============================ -->
+<div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:420px">
+    <form class="modal-content" id="loginForm" novalidate>
+      <div class="modal-body p-4">
+        <div class="text-center mb-3"><h2 class="h4 fw-bold mb-1" id="loginTitle">เข้าสู่ระบบ</h2>
+          <div class="sub">เจ้าหน้าที่ รพ.กมลาไสย และ รพ.สต.</div></div>
+        <div class="mb-3"><label class="form-label" for="lgUser">Username</label><input class="form-control" id="lgUser" autocomplete="username"></div>
+        <div class="mb-3"><label class="form-label" for="lgPass">Password</label><input class="form-control" id="lgPass" type="password" autocomplete="current-password"></div>
+        <button class="btn btn-pink w-100" type="submit" id="lgBtn">เข้าสู่ระบบ</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================ หน้าต่างข้อมูลรายบุคคล ============================ -->
+<div class="modal fade" id="caseModal" tabindex="-1" aria-labelledby="caseTitle" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-fullscreen-lg-down modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header flex-wrap gap-2" style="border-bottom:1px solid var(--pink-line)">
+        <div class="me-auto">
+          <div class="sub" id="caseSubTitle"></div>
+          <h2 class="modal-title h4 fw-bold mb-1" id="caseTitle">ข้อมูลเคส</h2>
+          <div id="caseBadges"></div>
+        </div>
+        <div class="d-flex flex-wrap gap-2" id="caseActions"></div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+      </div>
+      <div class="modal-body" style="background:#FFFBFD">
+        <ul class="nav nav-pills gap-1 mb-3 flex-nowrap overflow-auto" role="tablist">
+          <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabInfo" type="button">ข้อมูลเคส</button></li>
+          <li class="nav-item"><button class="nav-link text-nowrap" data-bs-toggle="pill" data-bs-target="#tabVisit" type="button" id="tabVisitBtn">เยี่ยมบ้าน / ตอบกลับ</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabLog" type="button">ประวัติ</button></li>
+          <li class="nav-item"><button class="nav-link hidden" data-bs-toggle="pill" data-bs-target="#tabEdit" type="button" id="tabEditBtn">แก้ไข</button></li>
+        </ul>
+        <div class="tab-content">
+          <div class="tab-pane fade show active" id="tabInfo"></div>
+          <div class="tab-pane fade" id="tabVisit"></div>
+          <div class="tab-pane fade" id="tabLog"></div>
+          <div class="tab-pane fade" id="tabEdit"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* =========================================================================
+   1) ค่าคงที่และตัวเลือก (ตรงกับ Code.gs)
+   ========================================================================= */
+const RPST_LIST = ['รพ.สต.ข้าวหลาม', 'รพ.สต.บ้านบึง', 'รพ.สต.โพนงาม', 'รพ.สต.สวนโคก', 'รพ.สต.ธัญญา',
+  'รพ.สต.หนองแปน', 'รพ.สต.เจ้าท่า', 'รพ.สต.หนองบัว', 'รพ.สต.นามล'];
+const RPST_OTHER = 'นอกเขต (ระบุเอง)';
+const STATUS_LIST = ['ส่งต่อแล้ว', 'รับเรื่องแล้ว', 'กำลังติดตาม', 'ติดตามครบ', 'ส่งกลับ รพ.', 'ติดตามไม่ได้', 'ปิดเคส'];
+const STATUS_CLASS = { 'ส่งต่อแล้ว': 'st-sent', 'รับเรื่องแล้ว': 'st-acked', 'กำลังติดตาม': 'st-follow', 'ติดตามครบ': 'st-done',
+  'ส่งกลับ รพ.': 'st-back', 'ติดตามไม่ได้': 'st-unreach', 'ปิดเคส': 'st-closed' };
+const STATUS_ICON = { 'ส่งต่อแล้ว': 'bi-send', 'รับเรื่องแล้ว': 'bi-check2', 'กำลังติดตาม': 'bi-house-heart', 'ติดตามครบ': 'bi-check2-all',
+  'ส่งกลับ รพ.': 'bi-exclamation-octagon', 'ติดตามไม่ได้': 'bi-question-circle', 'ปิดเคส': 'bi-lock' };
+
+const OPT = {
+  zone: ['ในเขต อ.กมลาไสย', 'นอกเขต'],
+  rpst: RPST_LIST.concat([RPST_OTHER]),
+  yesNo: ['ไม่มี', 'มี'],
+  riskLevel: ['ปกติ', 'เสี่ยง', 'เสี่ยงสูง'],
+  riskFactors: ['อายุ < 20 ปี', 'อายุ ≥ 35 ปี', 'เบาหวาน / GDM', 'ความดันโลหิตสูง / ครรภ์เป็นพิษ', 'ภาวะซีด',
+    'ติดเชื้อ HIV / ซิฟิลิส / HBV', 'เคยผ่าคลอด', 'ครรภ์แฝด', 'อื่น ๆ'],
+  deliveryMethod: ['คลอดปกติ (NL)', 'ผ่าตัดคลอด (C/S)', 'V/E', 'F/E', 'ท่าก้น (Breech)'],
+  perineum: ['ไม่มี', 'มี', 'RML', 'LML'],
+  babyPrefix: ['ด.ช.', 'ด.ญ.'], babyTerm: ['ครบกำหนด', 'ก่อนกำหนด'], vaccine: ['ได้รับ', 'ไม่ได้รับ'],
+  appointmentPlace: ['รพ.สต. ในเขต', 'รพ.กมลาไสย', 'อื่น ๆ'],
+  careItems: ['ติดตามการเลี้ยงลูกด้วยนมแม่', 'ติดตามสุขภาพจิตคุณแม่หลังคลอด 42 วัน',
+    'แนะนำนำสมุดบันทึกสุขภาพแม่และเด็ก (สีชมพู) ลงนัดฉีดวัคซีนที่ รพ.สต. ในเขต',
+    'ติดตามแผลผ่าตัด / แผลฝีเย็บ', 'ติดตามภาวะตัวเหลืองในทารก', 'วางแผนครอบครัว / คุมกำเนิด'],
+  // บันทึกเยี่ยมบ้าน
+  visitNo: [['1', 'ครั้งที่ 1'], ['2', 'ครั้งที่ 2'], ['3', 'ครั้งที่ 3']],
+  method: ['เยี่ยมบ้าน', 'โทรศัพท์ / วิดีโอคอล', 'มารับบริการที่ รพ.สต.'],
+  uterus: ['หดรัดตัวดี', 'หดรัดตัวไม่ดี'], lochia: ['ปกติ', 'ผิดปกติ (มีกลิ่น/สีผิดปกติ/มาก)'],
+  wound: ['แห้งดี', 'บวมแดง', 'มีหนอง / แยก', 'ไม่มีแผล'], breast: ['ปกติ', 'คัดตึง', 'หัวนมแตก / เจ็บ'],
+  breastfeeding: ['นมแม่อย่างเดียว', 'นมแม่ + นมผสม', 'นมผสมอย่างเดียว'], q2: ['ปกติ', 'ผิดปกติ'],
+  contraception: ['ยังไม่คุม', 'ยาเม็ด', 'ยาฉีด', 'ยาฝัง', 'ห่วงอนามัย', 'ทำหมัน'],
+  jaundice: ['ไม่เหลือง', 'เหลืองเล็กน้อย', 'เหลืองมาก (ส่งต่อ)'], cord: ['แห้งดี', 'แฉะ', 'บวมแดง / มีกลิ่น'],
+  sucking: ['ดูดดี', 'ดูดไม่ดี'], excretion: ['ปกติ', 'ผิดปกติ'],
+  result: [['ปกติ', 'ปกติ — ติดตามต่อ'], ['พบปัญหา', 'พบปัญหา — ส่งกลับ รพ.'], ['ติดตามไม่ได้', 'ติดตามไม่ได้']],
+  urgency: ['ด่วน (ภายใน 24 ชม.)', 'ปกติ (นัดตรวจ)'],
+  unreachableReason: ['ย้ายที่อยู่', 'ติดต่อไม่ได้', 'ปฏิเสธการเยี่ยม', 'อื่น ๆ']
+};
+
+/* นิยามฟิลด์ข้อมูลเคส: [key, ป้ายชื่อ, ชนิด, ตัวเลือก, {req, w(ความกว้าง), show(เงื่อนไขแสดง)}]
+   ใช้ทั้งหน้าแสดงข้อมูลและหน้าแก้ไข เพื่อให้ตรงกันเสมอ */
+const PATIENT_SECTIONS = [
+  { title: 'เขตบริการ', fields: [
+    ['zone', 'เขตบริการ', 'radio', OPT.zone, { req: 1, w: 6 }],
+    ['outDistrict', 'อำเภอ (กรณีนอกเขต)', 'text', null, { show: 'zone=นอกเขต' }]] },
+  { title: 'ข้อมูลมารดา', fields: [
+    ['motherName', 'ชื่อ-สกุล', 'text', null, { req: 1, w: 6 }], ['age', 'อายุ (ปี)', 'number', null, { req: 1 }],
+    ['phone', 'เบอร์โทรศัพท์', 'tel', null, { req: 1 }], ['hn', 'HN', 'text', null, { req: 1 }], ['an', 'AN', 'text'],
+    ['cid', 'เลขบัตรประชาชน', 'text', null, { w: 6 }], ['houseNo', 'บ้านเลขที่', 'text', null, { req: 1 }],
+    ['moo', 'หมู่ที่', 'text', null, { req: 1 }], ['tambon', 'ตำบล', 'text', null, { req: 1 }], ['amphoe', 'อำเภอ', 'text'],
+    ['province', 'จังหวัด', 'text'], ['rpst', 'รพ.สต.ที่รับผิดชอบ', 'select', OPT.rpst, { req: 1, w: 6 }],
+    ['rpstOther', 'รพ.สต. (นอกเขต ระบุ)', 'text', null, { w: 6, show: 'rpst=' + RPST_OTHER }],
+    ['location', 'พิกัดบ้าน / จุดสังเกต', 'text', null, { w: 6, link: 1 }], ['husbandName', 'ชื่อ-สกุลสามี', 'text', null, { w: 6 }],
+    ['husbandAge', 'อายุสามี (ปี)', 'number'], ['relativePhone', 'เบอร์โทรสามี/ญาติ', 'tel']] },
+  { title: 'ประวัติการตั้งครรภ์', fields: [
+    ['gravida', 'ครรภ์ที่ (G)', 'number', null, { req: 1 }], ['para', 'P', 'number'], ['abortion', 'A', 'number'], ['living', 'L', 'number'],
+    ['lmp', 'LMP', 'date'], ['edc', 'EDC', 'date'], ['ancPlace', 'สถานที่ฝากครรภ์', 'text'], ['ancCount', 'จำนวนครั้ง ANC', 'number'],
+    ['pregAbnormal', 'ภาวะผิดปกติขณะตั้งครรภ์', 'radio', OPT.yesNo, { w: 6 }],
+    ['pregAbnormalDetail', 'ระบุภาวะผิดปกติ', 'text', null, { w: 6, show: 'pregAbnormal=มี' }],
+    ['riskLevel', 'ระดับความเสี่ยงของครรภ์', 'radio', OPT.riskLevel, { w: 12 }],
+    ['riskFactors', 'ปัจจัยเสี่ยง', 'checks', OPT.riskFactors, { w: 12 }],
+    ['riskOther', 'ปัจจัยเสี่ยงอื่น ๆ (ระบุ)', 'text', null, { w: 12, show: 'riskFactors~อื่น ๆ' }]] },
+  { title: 'ประวัติการคลอด', fields: [
+    ['deliveryDate', 'วันที่คลอด', 'date', null, { req: 1 }], ['deliveryTime', 'เวลาคลอด', 'time'],
+    ['gaWeeks', 'อายุครรภ์ (สัปดาห์)', 'number', null, { req: 1 }], ['gaDays', 'อายุครรภ์ (+วัน)', 'number'],
+    ['deliveryMethod', 'วิธีการคลอด', 'select', OPT.deliveryMethod, { req: 1, w: 6 }],
+    ['deliveryDetail', 'ข้อบ่งชี้ / รายละเอียด', 'text', null, { w: 6 }],
+    ['perineum', 'แผลฝีเย็บ', 'radio', OPT.perineum, { w: 6 }], ['woundDetail', 'ลักษณะแผล', 'text', null, { w: 6 }],
+    ['deliveryComplication', 'ภาวะแทรกซ้อน', 'radio', OPT.yesNo, { w: 6 }],
+    ['deliveryComplicationDetail', 'ระบุภาวะแทรกซ้อน', 'text', null, { w: 6, show: 'deliveryComplication=มี' }],
+    ['obstetrician', 'สูติแพทย์ผู้ดูแล', 'text', null, { w: 6 }]] },
+  { title: 'ข้อมูลทารก', fields: [
+    ['babyPrefix', 'คำนำหน้า', 'select', OPT.babyPrefix, { req: 1 }], ['babyName', 'ชื่อ-สกุลทารก', 'text', null, { w: 6 }],
+    ['babyHn', 'HN ทารก', 'text', null, { req: 1 }], ['babyTerm', 'การคลอด', 'radio', OPT.babyTerm, { w: 6 }],
+    ['birthWeight', 'น้ำหนักแรกเกิด (กรัม)', 'number', null, { req: 1 }], ['babyLength', 'ความยาว (ซม.)', 'number'],
+    ['headCirc', 'รอบศีรษะ (ซม.)', 'number'], ['chestCirc', 'รอบอก (ซม.)', 'number'],
+    ['apgar1', 'Apgar นาทีที่ 1', 'number'], ['apgar5', 'Apgar นาทีที่ 5', 'number'], ['apgar10', 'Apgar นาทีที่ 10', 'number'],
+    ['vaccineBCG', 'วัคซีน BCG', 'select', OPT.vaccine], ['vaccineHBV', 'วัคซีน HBV', 'select', OPT.vaccine],
+    ['babyComplication', 'ภาวะแทรกซ้อนทารก', 'text', null, { w: 6 }], ['pediatrician', 'กุมารแพทย์ผู้ดูแล', 'text', null, { w: 6 }]] },
+  { title: 'การจำหน่ายและนัดหมาย', fields: [
+    ['motherDischargeDate', 'มารดาจำหน่ายวันที่', 'date', null, { req: 1 }], ['babyDischargeDate', 'ทารกจำหน่ายวันที่', 'date', null, { req: 1 }],
+    ['nextAppointment', 'วันนัดครั้งถัดไป', 'date'], ['appointmentPlace', 'สถานที่นัด', 'select', OPT.appointmentPlace]] },
+  { title: 'ภาวะสุขภาพที่ต้องดูแล', fields: [
+    ['careItems', 'สิ่งที่ รพ.สต. ต้องติดตาม', 'checks', OPT.careItems, { w: 12 }],
+    ['careNote', 'หมายเหตุถึง รพ.สต.', 'textarea', null, { w: 12 }]] },
+  { title: 'ผู้บันทึก', fields: [['recorder', 'ผู้บันทึก', 'text', null, { req: 1, w: 6 }], ['recordDate', 'วันที่บันทึก', 'date']] }
+];
+
+const VISIT_SECTIONS = [
+  { title: 'การเยี่ยม', fields: [
+    ['visitNo', 'ครั้งที่', 'radio', OPT.visitNo, { req: 1, w: 6 }], ['visitDate', 'วันที่เยี่ยม', 'date', null, { req: 1 }],
+    ['method', 'วิธีติดตาม', 'select', OPT.method, { req: 1 }], ['visitor', 'ผู้เยี่ยม', 'text', null, { req: 1, w: 6 }]] },
+  { title: 'มารดา', fields: [
+    ['mBP', 'ความดันโลหิต (mmHg)', 'text'], ['mPulse', 'ชีพจร (ครั้ง/นาที)', 'number'], ['mTemp', 'อุณหภูมิ (°C)', 'decimal'],
+    ['uterus', 'มดลูก', 'select', OPT.uterus], ['lochia', 'น้ำคาวปลา', 'select', OPT.lochia], ['wound', 'แผลฝีเย็บ / แผลผ่าตัด', 'select', OPT.wound],
+    ['breast', 'เต้านม / หัวนม', 'select', OPT.breast], ['breastfeeding', 'การเลี้ยงลูกด้วยนมแม่', 'select', OPT.breastfeeding, { req: 1 }],
+    ['q2', 'คัดกรองซึมเศร้า 2Q', 'radio', OPT.q2], ['q9Score', 'คะแนน 9Q', 'number', null, { show: 'q2=ผิดปกติ' }],
+    ['contraception', 'การคุมกำเนิด', 'select', OPT.contraception]] },
+  { title: 'ทารก', fields: [
+    ['bWeight', 'น้ำหนัก (กรัม)', 'number'], ['bTemp', 'อุณหภูมิ (°C)', 'decimal'], ['jaundice', 'ภาวะตัวเหลือง', 'select', OPT.jaundice],
+    ['cord', 'สะดือ', 'select', OPT.cord], ['sucking', 'การดูดนม', 'select', OPT.sucking], ['excretion', 'การขับถ่าย', 'select', OPT.excretion],
+    ['nextVaccineDate', 'นัดวัคซีนครั้งถัดไป', 'date']] },
+  { title: 'สรุปผลและส่งกลับ รพ.', fields: [
+    ['result', 'ผลการติดตาม', 'radio', OPT.result, { req: 1, w: 12 }],
+    ['problem', 'ปัญหาที่พบ', 'text', null, { w: 6, show: 'result=พบปัญหา' }],
+    ['urgency', 'ความเร่งด่วน', 'select', OPT.urgency, { show: 'result=พบปัญหา' }],
+    ['unreachableReason', 'สาเหตุติดตามไม่ได้', 'select', OPT.unreachableReason, { show: 'result=ติดตามไม่ได้' }],
+    ['note', 'บันทึกเพิ่มเติมถึง รพ.', 'textarea', null, { w: 12 }]] }
+];
+
+/* =========================================================================
+   2) ตัวช่วยทั่วไป
+   ========================================================================= */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { } }
+};
+const todayISO = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+function thaiDate(s) {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(s || '')) return s || '-';
+  return +s.slice(8, 10) + ' ' + TH_MONTH[+s.slice(5, 7) - 1] + ' ' + (+s.slice(0, 4) + 543) + (s.length > 10 ? ' ' + s.slice(11, 16) + ' น.' : '');
+}
+const swalColor = { confirmButtonColor: '#C2185B' };
+const toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2200, timerProgressBar: true });
+
+let auth = store.get('pp_auth'); // ใช้ร่วมกับ form.html
+
+/** เรียก API: GET สำหรับข้อมูลสาธารณะ, POST (text/plain) สำหรับข้อมูลที่ต้อง Login */
+async function api(action, payload = {}, method = 'POST') {
+  let res;
+  if (method === 'GET') {
+    const qs = new URLSearchParams(Object.assign({ action }, payload)).toString();
+    res = await fetch(API_URL + '?' + qs);
+  } else {
+    res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ action, token: auth && auth.token }, payload)) });
+  }
+  if (!res.ok) throw new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ (HTTP ' + res.status + ')');
+  const json = await res.json();
+  if (!json.success && /เข้าสู่ระบบ/.test(json.message || '') && auth) {
+    setAuth(null);
+    Swal.fire(Object.assign({ icon: 'info', title: 'หมดเวลาการใช้งาน', text: 'กรุณาเข้าสู่ระบบใหม่' }, swalColor)).then(() => loginModal.show());
+  }
+  return json;
+}
+
+/** ปิดปุ่มระหว่างทำงาน กันกดซ้ำ และแสดงสถานะกำลังโหลด */
+async function busy(btn, label, fn) {
+  if (btn.dataset.busy) return;
+  const html = btn.innerHTML;
+  btn.dataset.busy = '1'; btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> ${label}`;
+  try { return await fn(); }
+  finally { delete btn.dataset.busy; btn.disabled = false; btn.innerHTML = html; }
+}
+const fail = (err) => Swal.fire(Object.assign({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message || String(err) }, swalColor));
+
+/* =========================================================================
+   3) สถิติและกราฟ (ไม่ต้อง Login)
+   ========================================================================= */
+Chart.defaults.font.family = "'Sarabun', sans-serif";
+Chart.defaults.font.size = 14;
+Chart.defaults.color = '#6F5A66';
+// พาเลตต์ตรวจสอบแล้ว: แยกสีได้สำหรับผู้มีภาวะตาบอดสี (ลำดับคงที่ ไม่วนซ้ำ)
+const CAT = ['#D6336C', '#1C7ED6', '#F08C00', '#0CA678', '#7048E8'];
+const GRAY = '#ADB5BD';
+const RISK_COLORS = { 'ปกติ': '#F3A6C3', 'เสี่ยง': '#D6336C', 'เสี่ยงสูง': '#8E0F42', 'ไม่ระบุ': GRAY };
+const charts = {};
+
+const gridOpts = { color: '#F3E3EA', drawTicks: false };
+function barChart(id, labels, values, color, horizontal) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'จำนวน (ราย)', data: values, backgroundColor: color, borderRadius: 4, borderSkipped: 'start', maxBarThickness: 28 }] },
+    options: {
+      indexAxis: horizontal ? 'y' : 'x', maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + c.parsed[horizontal ? 'x' : 'y'] + ' ราย' } } },
+      scales: {
+        [horizontal ? 'x' : 'y']: { beginAtZero: true, ticks: { precision: 0, padding: 6 }, grid: gridOpts, border: { display: false } },
+        [horizontal ? 'y' : 'x']: { grid: { display: false }, ticks: { padding: 6 } }
+      }
+    }
+  });
+}
+function doughnutChart(id, labels, values, colors) {
+  if (charts[id]) charts[id].destroy();
+  const total = values.reduce((a, b) => a + b, 0);
+  charts[id] = new Chart(document.getElementById(id), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#fff', borderWidth: 2, hoverOffset: 6 }] },
+    options: {
+      maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 10, padding: 12,
+          generateLabels: ch => Chart.overrides.doughnut.plugins.legend.labels.generateLabels(ch).map((l, i) => Object.assign(l, { text: `${labels[i]} (${values[i]})` })) } },
+        tooltip: { callbacks: { label: c => ` ${c.label}: ${c.parsed} ราย (${total ? Math.round(c.parsed * 100 / total) : 0}%)` } }
+      }
+    }
+  });
+}
+function miniTable(elId, rows) {
+  $('#' + elId).innerHTML = `<table class="table table-sm mt-2 mb-0"><thead><tr><th>รายการ</th><th class="text-end">จำนวน (ราย)</th></tr></thead><tbody>` +
+    rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="text-end">${v}</td></tr>`).join('') + '</tbody></table>';
+}
+
+function renderKpis(t) {
+  const items = [
+    ['มารดาหลังคลอดทั้งหมด', t.mothers, 'bi-person-hearts', 'var(--pink-soft)', 'var(--pink)'],
+    ['ทารกทั้งหมด', t.babies, 'bi-emoji-smile', 'var(--mint)', 'var(--mint-ink)'],
+    ['กำลังติดตาม', t.active, 'bi-house-heart', 'var(--sky)', 'var(--sky-ink)'],
+    ['เคสค้าง (เกินกำหนด)', t.overdue, 'bi-exclamation-triangle', 'var(--peach)', 'var(--peach-ink)'],
+    ['ส่งกลับ รพ.', t.referBack, 'bi-hospital', 'var(--lav)', 'var(--lav-ink)'],
+    ['ครรภ์เสี่ยงสูง', t.highRisk, 'bi-heart-pulse', 'var(--sun)', 'var(--sun-ink)']
+  ];
+  $('#kpiRow').innerHTML = items.map(([l, n, ic, bg, fg]) => `
+    <div class="col-6 col-md-4 col-xl-2"><div class="card-x kpi">
+      <div class="ico" style="background:${bg};color:${fg}"><i class="bi ${ic}"></i></div>
+      <div><div class="num">${(n || 0).toLocaleString('th-TH')}</div><div class="lbl">${l}</div></div></div></div>`).join('');
+}
+
+async function loadStats() {
+  const fy = $('#fySelect').value;
+  try {
+    const res = await api('getDashboardStats', fy ? { fiscalYear: fy } : {}, 'GET');
+    if (!res.success) throw new Error(res.message);
+    const s = res.data;
+    // ตัวเลือกปีงบประมาณ
+    const sel = $('#fySelect');
+    const years = Array.from(new Set((s.fiscalYears || []).concat([s.currentFiscalYear]))).sort((a, b) => b - a);
+    sel.innerHTML = '<option value="">ทุกปีงบประมาณ</option>' + years.map(y => `<option value="${y}">ปีงบประมาณ ${y}</option>`).join('');
+    sel.value = fy;
+    $('#updatedAt').textContent = 'ข้อมูล ณ ' + thaiDate(s.updatedAt) + (fy ? ` · ปีงบประมาณ ${fy}` : ' · ทุกปีงบประมาณ');
+
+    renderKpis(s.totals);
+    // แยกตาม รพ.สต. (เรียงตามรายชื่อ คงที่ ไม่เรียงตามจำนวน)
+    const rpstKeys = RPST_LIST.concat(Object.keys(s.byRpst).filter(k => !RPST_LIST.includes(k) && s.byRpst[k] > 0));
+    const rpstVals = rpstKeys.map(k => s.byRpst[k] || 0);
+    barChart('chRpst', rpstKeys.map(k => k.replace('รพ.สต.', '')), rpstVals, '#D6336C', true);
+    miniTable('tblRpst', rpstKeys.map((k, i) => [k, rpstVals[i]]));
+    // ไตรมาส
+    const qLabels = ['Q1 ต.ค.–ธ.ค.', 'Q2 ม.ค.–มี.ค.', 'Q3 เม.ย.–มิ.ย.', 'Q4 ก.ค.–ก.ย.'];
+    const qVals = ['Q1', 'Q2', 'Q3', 'Q4'].map(q => s.byQuarter[q] || 0);
+    barChart('chQuarter', qLabels, qVals, '#1C7ED6', false);
+    miniTable('tblQuarter', qLabels.map((k, i) => [k, qVals[i]]));
+    // ประเภทการคลอด (สีตามลำดับตัวเลือกคงที่)
+    const mKeys = OPT.deliveryMethod.filter(k => s.byDeliveryMethod[k]).concat(Object.keys(s.byDeliveryMethod).filter(k => !OPT.deliveryMethod.includes(k)));
+    doughnutChart('chMethod', mKeys, mKeys.map(k => s.byDeliveryMethod[k]),
+      mKeys.map(k => OPT.deliveryMethod.includes(k) ? CAT[OPT.deliveryMethod.indexOf(k)] : GRAY));
+    miniTable('tblMethod', mKeys.map(k => [k, s.byDeliveryMethod[k]]));
+    // ระดับความเสี่ยง (ไล่ระดับสีเดียว อ่อน→เข้ม)
+    const rKeys = ['ปกติ', 'เสี่ยง', 'เสี่ยงสูง', 'ไม่ระบุ'].filter(k => s.byRiskLevel[k]);
+    doughnutChart('chRisk', rKeys, rKeys.map(k => s.byRiskLevel[k]), rKeys.map(k => RISK_COLORS[k]));
+    miniTable('tblRisk', rKeys.map(k => [k, s.byRiskLevel[k]]));
+    // สถานะ
+    const sVals = STATUS_LIST.map(k => s.byStatus[k] || 0);
+    barChart('chStatus', STATUS_LIST, sVals, '#0CA678', true);
+    miniTable('tblStatus', STATUS_LIST.map((k, i) => [k, sVals[i]]));
+  } catch (err) {
+    $('#updatedAt').textContent = 'โหลดข้อมูลสถิติไม่สำเร็จ: ' + err.message;
+  }
+}
+
+/* =========================================================================
+   4) Login / Logout / เปลี่ยนรหัสผ่าน
+   ========================================================================= */
+const loginModal = new bootstrap.Modal('#loginModal');
+const caseModal = new bootstrap.Modal('#caseModal');
+const isStaff = () => auth && (auth.user.role === 'admin' || auth.user.role === 'hospital');
+
+function setAuth(a) {
+  auth = a;
+  if (a) store.set('pp_auth', a); else store.del('pp_auth');
+  const on = !!a;
+  ['#userChip', '#btnLogout', '#btnPw', '#caseBox'].forEach(s => $(s).classList.toggle('hidden', !on));
+  $('#btnLogin').classList.toggle('hidden', on);
+  $('#guestBox').classList.toggle('hidden', on);
+  $('#lnkForm').classList.toggle('hidden', !isStaff());
+  $('#rpstFilterWrap').classList.toggle('hidden', !isStaff());
+  $('#userName').textContent = on ? a.user.displayName : '';
+  if (!on) { allCases = []; $('#caseRows').innerHTML = ''; caseModal.hide(); }
+}
+
+$('#loginForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const u = $('#lgUser').value.trim(), p = $('#lgPass').value;
+  if (!u || !p) { Swal.fire(Object.assign({ icon: 'warning', title: 'กรุณากรอก Username และ Password' }, swalColor)); return; }
+  busy($('#lgBtn'), 'กำลังตรวจสอบ...', async () => {
+    try {
+      const res = await api('login', { username: u, password: p });
+      if (!res.success) throw new Error(res.message);
+      setAuth(res.data);
+      loginModal.hide(); $('#lgPass').value = '';
+      toast.fire({ icon: 'success', title: 'ยินดีต้อนรับ ' + res.data.user.displayName });
+      if (res.data.mustChangePassword) {
+        Swal.fire(Object.assign({ icon: 'warning', title: 'ยังใช้รหัสผ่านเริ่มต้น', text: 'กรุณาเปลี่ยนรหัสผ่านเพื่อความปลอดภัยของข้อมูลผู้ป่วย',
+          showCancelButton: true, confirmButtonText: 'เปลี่ยนตอนนี้', cancelButtonText: 'ภายหลัง' }, swalColor)).then(r => { if (r.isConfirmed) changePassword(); });
+      }
+      loadCases();
+    } catch (err) { Swal.fire(Object.assign({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: err.message }, swalColor)); }
+  });
+});
+$('#loginModal').addEventListener('shown.bs.modal', () => $('#lgUser').focus());
+$('#btnLogin').addEventListener('click', () => loginModal.show());
+$('#btnLogin2').addEventListener('click', () => loginModal.show());
+$('#btnLogout').addEventListener('click', async () => {
+  const r = await Swal.fire(Object.assign({ icon: 'question', title: 'ออกจากระบบ?', showCancelButton: true, confirmButtonText: 'ออกจากระบบ', cancelButtonText: 'ยกเลิก' }, swalColor));
+  if (!r.isConfirmed) return;
+  try { await api('logout'); } catch (e) { }
+  setAuth(null);
+  toast.fire({ icon: 'success', title: 'ออกจากระบบแล้ว' });
+});
+
+async function changePassword() {
+  const r = await Swal.fire(Object.assign({
+    title: 'เปลี่ยนรหัสผ่าน',
+    html: `<input id="pw0" type="password" class="swal2-input" placeholder="รหัสผ่านเดิม" autocomplete="current-password">
+           <input id="pw1" type="password" class="swal2-input" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)" autocomplete="new-password">
+           <input id="pw2" type="password" class="swal2-input" placeholder="ยืนยันรหัสผ่านใหม่" autocomplete="new-password">`,
+    showCancelButton: true, confirmButtonText: 'บันทึก', cancelButtonText: 'ยกเลิก', showLoaderOnConfirm: true,
+    preConfirm: async () => {
+      const o = $('#pw0').value, n = $('#pw1').value, c = $('#pw2').value;
+      if (!o || !n) return Swal.showValidationMessage('กรุณากรอกให้ครบ');
+      if (n.length < 6) return Swal.showValidationMessage('รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร');
+      if (n !== c) return Swal.showValidationMessage('ยืนยันรหัสผ่านไม่ตรงกัน');
+      try {
+        const res = await api('changePassword', { oldPassword: o, newPassword: n });
+        if (!res.success) throw new Error(res.message);
+        return true;
+      } catch (err) { Swal.showValidationMessage(err.message); }
+    }, allowOutsideClick: () => !Swal.isLoading()
+  }, swalColor));
+  if (r.isConfirmed) Swal.fire(Object.assign({ icon: 'success', title: 'เปลี่ยนรหัสผ่านเรียบร้อย' }, swalColor));
+}
+$('#btnPw').addEventListener('click', changePassword);
+
+/* =========================================================================
+   5) รายชื่อเคส
+   ========================================================================= */
+let allCases = [], statusFilter = '', shown = 50;
+
+function statusBadge(st) {
+  return `<span class="st ${STATUS_CLASS[st] || 'st-unreach'}"><i class="bi ${STATUS_ICON[st] || 'bi-dot'}"></i>${esc(st || '-')}</span>`;
+}
+
+async function loadCases() {
+  if (!auth) return;
+  $('#caseRows').innerHTML = `<tr><td colspan="7" class="text-center py-4"><span class="spinner-border spinner-border-sm text-danger"></span> กำลังโหลดรายชื่อ...</td></tr>`;
+  try {
+    const res = await api('listPatients');
+    if (!res.success) throw new Error(res.message);
+    allCases = res.data.items;
+    // ตัวกรอง รพ.สต.
+    const rs = $('#rpstFilter'), keep = rs.value;
+    rs.innerHTML = '<option value="">ทุก รพ.สต.</option>' + OPT.rpst.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+    rs.value = keep;
+    $('#caseSub').textContent = auth.user.role === 'rpst' ? `เฉพาะเคสของ ${auth.user.rpst}` : 'ทุก รพ.สต. (คลิกรายชื่อเพื่อดูรายละเอียด)';
+    renderCases();
+  } catch (err) {
+    $('#caseRows').innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">${esc(err.message)}</td></tr>`;
+  }
+}
+
+function filteredCases() {
+  const q = $('#q').value.trim().toLowerCase();
+  const rp = $('#rpstFilter').value;
+  const od = $('#overdueOnly').checked;
+  return allCases.filter(c =>
+    (!statusFilter || c.status === statusFilter) &&
+    (!rp || c.rpst === rp || (rp === RPST_OTHER && c.rpst.startsWith('นอกเขต'))) &&
+    (!od || c.overdue) &&
+    (!q || [c.motherName, c.hn, c.phone, c.id].join(' ').toLowerCase().includes(q)));
+}
+
+function renderCases() {
+  // ปุ่มกรองสถานะพร้อมจำนวน
+  const counts = {};
+  allCases.forEach(c => counts[c.status] = (counts[c.status] || 0) + 1);
+  const chips = [['', 'ทั้งหมด', allCases.length]].concat(STATUS_LIST.filter(s => counts[s]).map(s => [s, s, counts[s]]));
+  $('#statusChips').innerHTML = chips.map(([v, l, n]) =>
+    `<button type="button" class="chip-f ${statusFilter === v ? 'active' : ''}" data-st="${esc(v)}">${esc(l)} <b>${n}</b></button>`).join('');
+  $$('#statusChips .chip-f').forEach(b => b.addEventListener('click', () => { statusFilter = b.dataset.st; shown = 50; renderCases(); }));
+
+  const list = filteredCases();
+  if (!list.length) {
+    $('#caseRows').innerHTML = `<tr><td colspan="7" class="text-center sub py-4">ไม่พบรายการ</td></tr>`;
+    $('#btnMore').classList.add('hidden'); return;
+  }
+  $('#caseRows').innerHTML = list.slice(0, shown).map(c => `
+    <tr data-id="${esc(c.id)}">
+      <td><button type="button" class="name-btn" data-id="${esc(c.id)}">${esc(c.motherName)}</button>
+        <div class="sub">HN ${esc(c.hn)} · อายุ ${esc(c.age)} ปี${c.tambon ? ' · ม.' + esc(c.moo) + ' ต.' + esc(c.tambon) : ''}</div></td>
+      <td class="d-none d-md-table-cell">${esc(c.rpst)}</td>
+      <td class="text-nowrap">${thaiDate(c.deliveryDate)}<div class="sub">หลังคลอด ${c.daysPostpartum ?? '-'} วัน</div></td>
+      <td class="d-none d-lg-table-cell">${esc(c.deliveryMethod)}</td>
+      <td class="d-none d-lg-table-cell">${c.riskLevel === 'เสี่ยงสูง' ? '<b style="color:var(--pink-dark)">เสี่ยงสูง</b>' : esc(c.riskLevel || '-')}</td>
+      <td class="text-center fw-semibold">${+c.visitCount || 0}/3</td>
+      <td>${statusBadge(c.status)}${c.overdue ? `<div class="overdue mt-1"><i class="bi bi-exclamation-triangle-fill"></i> ${esc(c.overdue)}</div>` : ''}</td>
+    </tr>`).join('');
+  $$('#caseRows tr[data-id]').forEach(tr => tr.addEventListener('click', () => openCase(tr.dataset.id)));
+  $('#btnMore').classList.toggle('hidden', list.length <= shown);
+}
+$('#q').addEventListener('input', () => { shown = 50; renderCases(); });
+$('#rpstFilter').addEventListener('change', () => { shown = 50; renderCases(); });
+$('#overdueOnly').addEventListener('change', () => { shown = 50; renderCases(); });
+$('#btnMore').addEventListener('click', () => { shown += 50; renderCases(); });
+
+/* =========================================================================
+   6) สร้างฟอร์มจากนิยามฟิลด์ (ใช้กับ แก้ไขเคส และ บันทึกเยี่ยมบ้าน)
+   ========================================================================= */
+let uid = 0;
+function fieldHtml(f, prefix) {
+  const [key, label, type, opts, o = {}] = f;
+  const id = prefix + key + '_' + (++uid);
+  const w = o.w === 12 ? 'col-12' : o.w === 6 ? 'col-12 col-md-6' : 'col-6 col-md-3';
+  const star = o.req ? ' <span class="req">*</span>' : '';
+  const reqAttr = o.req ? 'data-req="1"' : '';
+  const show = o.show ? `data-show="${esc(o.show)}"` : '';
+  const pair = v => Array.isArray(v) ? v : [v, v];
+  let input;
+  if (type === 'radio' || type === 'checks') {
+    const t = type === 'radio' ? 'radio' : 'checkbox';
+    input = `<div class="pills" data-name="${key}" ${reqAttr} role="group" aria-label="${esc(label)}">` + opts.map((v, i) => {
+      const [val, lab] = pair(v), oid = id + '_' + i;
+      return `<div class="pill"><input type="${t}" name="${key}" id="${oid}" value="${esc(val)}"><label for="${oid}">${esc(lab)}</label></div>`;
+    }).join('') + '</div>';
+    return `<div class="${w}" ${show}><div class="form-label">${esc(label)}${star}</div>${input}</div>`;
+  }
+  if (type === 'select') {
+    input = `<select class="form-select" id="${id}" name="${key}" ${reqAttr}><option value="">— เลือก —</option>` +
+      opts.map(v => { const [val, lab] = pair(v); return `<option value="${esc(val)}">${esc(lab)}</option>`; }).join('') + '</select>';
+  } else if (type === 'textarea') {
+    input = `<textarea class="form-control" id="${id}" name="${key}" rows="3" maxlength="1000" ${reqAttr}></textarea>`;
+  } else {
+    const t = type === 'decimal' ? 'number" step="0.1' : type;
+    input = `<input class="form-control" id="${id}" name="${key}" type="${t}" ${reqAttr} maxlength="300">`;
+  }
+  return `<div class="${w}" ${show}><label class="form-label" for="${id}">${esc(label)}${star}</label>${input}</div>`;
+}
+
+function formHtml(sections, prefix) {
+  return sections.map(s => `<div class="sec-title">${esc(s.title)}</div><div class="row g-3">${s.fields.map(f => fieldHtml(f, prefix)).join('')}</div>`).join('');
+}
+
+function readForm(root) {
+  const out = {};
+  $$('[name]', root).forEach(el => {
+    if (el.type === 'file') return;
+    if (el.type === 'radio') { if (el.checked) out[el.name] = el.value; else if (!(el.name in out)) out[el.name] = ''; }
+    else if (el.type === 'checkbox') { out[el.name] = out[el.name] || []; if (el.checked) out[el.name].push(el.value); }
+    else out[el.name] = el.value.trim();
+  });
+  return out;
+}
+
+function fillForm(root, data) {
+  Object.keys(data).forEach(k => {
+    const v = data[k];
+    $$(`[name="${k}"]`, root).forEach(el => {
+      if (el.type === 'radio') el.checked = el.value === String(v);
+      else if (el.type === 'checkbox') el.checked = (Array.isArray(v) ? v : String(v || '').split(',').map(x => x.trim())).includes(el.value);
+      else if (el.tagName === 'SELECT' && v && !$$('option', el).some(o => o.value === String(v))) {
+        el.insertAdjacentHTML('beforeend', `<option value="${esc(v)}">${esc(v)}</option>`); el.value = v;
+      } else el.value = v ?? '';
+    });
+  });
+}
+
+/** แสดง/ซ่อนช่องตามเงื่อนไข data-show="key=ค่า" หรือ "key~ค่า" (checkbox มีค่า) */
+function syncShow(root) {
+  const d = readForm(root);
+  $$('[data-show]', root).forEach(el => {
+    const cond = el.dataset.show;
+    const [k, v] = cond.split(/[=~]/);
+    const ok = cond.includes('~') ? (d[k] || []).includes(v) : d[k] === v;
+    el.classList.toggle('hidden', !ok);
+  });
+}
+
+/** ตรวจช่องบังคับที่มองเห็นอยู่ */
+function validateRequired(root) {
+  const d = readForm(root);
+  let first = null;
+  $$('.is-invalid, .is-invalid-group', root).forEach(el => el.classList.remove('is-invalid', 'is-invalid-group'));
+  $$('[data-req]', root).forEach(el => {
+    if (el.closest('.hidden')) return;
+    const name = el.dataset.name || el.name;
+    const val = d[name];
+    if (!val || (Array.isArray(val) && !val.length)) {
+      el.classList.add(el.dataset.name ? 'is-invalid-group' : 'is-invalid');
+      first = first || el;
+    }
+  });
+  if (first) {
+    first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    Swal.fire(Object.assign({ icon: 'warning', title: 'ข้อมูลยังไม่ครบถ้วน', text: 'กรุณากรอกช่องที่มีกรอบสีแดง' }, swalColor));
+    return false;
+  }
+  return true;
+}
+
+/* ไฟล์แนบ: ตรวจและแปลงเป็น base64 */
+const MAX_BYTES = 5 * 1024 * 1024, TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
+function checkFiles(list, max) {
+  const arr = Array.from(list || []);
+  if (arr.length > max) throw new Error('แนบไฟล์ได้อีกไม่เกิน ' + max + ' ไฟล์');
+  arr.forEach(f => {
+    if (!TYPES.includes(f.type)) throw new Error(f.name + ': รองรับเฉพาะ JPG, PNG, PDF');
+    if (f.size > MAX_BYTES) throw new Error(f.name + ': ขนาดเกิน 5 MB');
+  });
+  return arr;
+}
+const toB64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok({ name: f.name, mimeType: f.type, base64: String(r.result).split(',')[1] }); r.onerror = () => no(new Error('อ่านไฟล์ไม่สำเร็จ')); r.readAsDataURL(f); });
+
+/** เปิดดูไฟล์แนบ (ขอไฟล์จาก API เฉพาะผู้มีสิทธิ์) */
+async function viewFile(patientId, fileId, btn) {
+  await busy(btn, 'กำลังโหลด', async () => {
+    try {
+      const res = await api('getAttachment', { patientId, fileId });
+      if (!res.success) throw new Error(res.message);
+      const bin = atob(res.data.base64), bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: res.data.mimeType }));
+      const isImg = res.data.mimeType.startsWith('image/');
+      Swal.fire(Object.assign({
+        title: esc(res.data.name), imageUrl: isImg ? url : undefined, imageAlt: res.data.name, width: isImg ? 820 : 480,
+        html: `<a class="btn btn-pink mt-2" href="${url}" target="_blank" rel="noopener" download="${esc(res.data.name)}"><i class="bi bi-download"></i> เปิด / ดาวน์โหลดไฟล์</a>`,
+        showConfirmButton: false, showCloseButton: true
+      }, swalColor));
+    } catch (err) { fail(err); }
+  });
+}
+
+function filesHtml(list, patientId) {
+  if (!list || !list.length) return '<div class="sub">ไม่มีไฟล์แนบ</div>';
+  return '<div class="d-flex flex-wrap gap-2">' + list.map(f => `
+    <button type="button" class="btn btn-soft btn-sm file-btn" data-pid="${esc(patientId)}" data-fid="${esc(f.id)}">
+      <i class="bi ${f.mimeType === 'application/pdf' ? 'bi-file-earmark-pdf' : 'bi-file-earmark-image'}"></i> ${esc(f.name)}</button>`).join('') + '</div>';
+}
+function bindFileButtons(root) {
+  $$('.file-btn', root).forEach(b => b.addEventListener('click', () => viewFile(b.dataset.pid, b.dataset.fid, b)));
+}
+
+/* =========================================================================
+   7) ข้อมูลรายบุคคล
+   ========================================================================= */
+let current = null; // { patient, visits, logs, canEdit }
+
+async function openCase(id) {
+  $('#caseTitle').textContent = 'กำลังโหลด...';
+  $('#caseSubTitle').textContent = ''; $('#caseBadges').innerHTML = ''; $('#caseActions').innerHTML = '';
+  ['#tabInfo', '#tabVisit', '#tabLog', '#tabEdit'].forEach(s => $(s).innerHTML = '<div class="text-center py-5"><span class="spinner-border text-danger"></span></div>');
+  bootstrap.Tab.getOrCreateInstance($('[data-bs-target="#tabInfo"]')).show();
+  caseModal.show();
+  await reloadCase(id);
+}
+
+async function reloadCase(id) {
+  try {
+    const res = await api('getPatient', { id });
+    if (!res.success) throw new Error(res.message);
+    current = res.data;
+    renderCase();
+  } catch (err) { caseModal.hide(); fail(err); }
+}
+
+function kvHtml(label, value, wide) {
+  return `<div class="${wide ? 'col-12' : 'col-6 col-md-4 col-lg-3'}"><div class="kv"><span class="k">${esc(label)}</span><span class="v">${value}</span></div></div>`;
+}
+function displayValue(f, v) {
+  const [, , type, , o = {}] = f;
+  if (v === '' || v == null || (Array.isArray(v) && !v.length)) return '<span class="sub">-</span>';
+  if (type === 'date') return esc(thaiDate(v));
+  if (o.link && /^https?:\/\//.test(v)) return `<a href="${esc(v)}" target="_blank" rel="noopener">เปิดแผนที่ <i class="bi bi-box-arrow-up-right"></i></a>`;
+  return esc(v);
+}
+
+function renderCase() {
+  const p = current.patient, role = auth.user.role;
+  $('#caseSubTitle').textContent = `รหัสเคส ${p.id} · ${p.rpst === RPST_OTHER ? 'นอกเขต: ' + p.rpstOther : p.rpst}`;
+  $('#caseTitle').textContent = p.motherName;
+  $('#caseBadges').innerHTML = statusBadge(p.status) + ` <span class="sub ms-1">HN ${esc(p.hn)} · คลอด ${thaiDate(p.deliveryDate)} (หลังคลอด ${p.daysPostpartum ?? '-'} วัน) · เยี่ยม ${+p.visitCount || 0}/3</span>` +
+    (p.overdue ? `<div class="overdue mt-1"><i class="bi bi-exclamation-triangle-fill"></i> ${esc(p.overdue)}</div>` : '') +
+    (p.status === 'ส่งกลับ รพ.' ? `<div class="mt-1 fw-semibold" style="color:var(--pink-dark)"><i class="bi bi-exclamation-octagon-fill"></i> ${esc(p.urgency)} : ${esc(p.referBackDetail)}</div>` : '');
+
+  // ปุ่มดำเนินการตามสิทธิ์
+  const acts = [];
+  if (current.canEdit && p.status !== 'ปิดเคส') acts.push(`<button class="btn btn-green btn-sm" id="actClose" type="button"><i class="bi bi-lock"></i> ปิดเคส</button>`);
+  if (current.canEdit) acts.push(`<button class="btn btn-outline-danger btn-sm rounded-3" style="min-height:44px" id="actDelete" type="button"><i class="bi bi-trash"></i> ลบ</button>`);
+  $('#caseActions').innerHTML = acts.join('');
+  if ($('#actClose')) $('#actClose').addEventListener('click', e => closeCase(e.currentTarget));
+  if ($('#actDelete')) $('#actDelete').addEventListener('click', e => deleteCase(e.currentTarget));
+
+  // แท็บข้อมูลเคส
+  let info = PATIENT_SECTIONS.map(s => `<div class="sec-title">${esc(s.title)}</div><div class="row g-3">` +
+    s.fields.filter(f => !(f[4] && f[4].show) || p[f[0]]).map(f => kvHtml(f[1], displayValue(f, p[f[0]]), f[2] === 'checks' || f[2] === 'textarea')).join('') + '</div>').join('');
+  if ((p.babiesExtra || []).length) {
+    info += p.babiesExtra.map((b, i) => `<div class="sec-title">ทารกคนที่ ${i + 2}</div><div class="row g-3">` +
+      PATIENT_SECTIONS[4].fields.filter(f => f[0] !== 'pediatrician').map(f => kvHtml(f[1], displayValue(f, b[f[0]]))).join('') + '</div>').join('');
+  }
+  info += `<div class="sec-title">ไฟล์แนบจาก รพ.</div>` + filesHtml(p.attachments, p.id);
+  info += `<div class="sec-title">การติดตาม</div><div class="row g-3">` +
+    kvHtml('ผู้รับเรื่อง (รพ.สต.)', esc(p.ackBy || '-') + (p.ackPhone ? ' · ' + esc(p.ackPhone) : '')) + kvHtml('เวลารับเรื่อง', esc(thaiDate(p.ackAt))) +
+    kvHtml('เยี่ยมล่าสุด', esc(thaiDate(p.lastVisitDate))) + kvHtml('ผลเยี่ยมล่าสุด', esc(p.lastResult || '-')) + '</div>';
+  $('#tabInfo').innerHTML = info;
+  bindFileButtons($('#tabInfo'));
+
+  renderVisitTab();
+  // ประวัติ
+  $('#tabLog').innerHTML = current.logs.length ? '<div class="timeline">' + current.logs.map(l => `
+    <div class="item"><div class="fw-semibold">${esc(l.action)}</div><div class="sub">${thaiDate(l.time)} · ${esc(l.actor)}</div>
+    ${l.detail ? `<div>${esc(l.detail)}</div>` : ''}</div>`).join('') + '</div>' : '<div class="sub">ยังไม่มีประวัติ</div>';
+  // แก้ไข (เฉพาะ admin/hospital)
+  $('#tabEditBtn').classList.toggle('hidden', !current.canEdit);
+  if (current.canEdit) renderEditTab(); else $('#tabEdit').innerHTML = '';
+  $('#tabVisitBtn').textContent = `เยี่ยมบ้าน / ตอบกลับ (${current.visits.length})`;
+}
+
+/* ---------- แท็บเยี่ยมบ้าน: ยืนยันรับเรื่อง + รายการเยี่ยม + ฟอร์มบันทึก ---------- */
+function renderVisitTab() {
+  const p = current.patient, role = auth.user.role;
+  const canAck = (role === 'rpst' || role === 'admin') && !p.ackAt && p.status !== 'ปิดเคส';
+  const canVisit = p.status !== 'ปิดเคส';
+  let h = '';
+  if (canAck) h += `
+    <div class="ack-card mb-3"><div class="fw-bold mb-1" style="color:var(--mint-ink)"><i class="bi bi-1-circle-fill"></i> ยืนยันรับเรื่อง</div>
+      <div class="sub mb-2">กดภายใน 24 ชม. หลังได้รับแจ้ง เพื่อให้ รพ. ทราบว่ามีผู้รับผิดชอบเคสแล้ว</div>
+      <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-5"><label class="form-label" for="ackBy">ผู้รับผิดชอบเคส <span class="req">*</span></label><input class="form-control" id="ackBy" maxlength="120"></div>
+        <div class="col-12 col-md-4"><label class="form-label" for="ackPhone">เบอร์ติดต่อกลับ</label><input class="form-control" id="ackPhone" type="tel" maxlength="20"></div>
+        <div class="col-12 col-md-3"><button class="btn btn-green w-100" type="button" id="btnAck">ยืนยันรับเรื่อง</button></div>
+      </div></div>`;
+
+  h += `<div class="sec-title mt-0">บันทึกการเยี่ยม (${current.visits.length})</div>`;
+  h += current.visits.length ? '<div class="d-flex flex-column gap-3">' + current.visits.map(v => {
+    const parts = VISIT_SECTIONS.slice(1, 3).flatMap(s => s.fields).filter(f => v[f[0]]).map(f => `<span class="me-3"><span class="sub">${esc(f[1])}:</span> ${esc(v[f[0]])}</span>`).join('');
+    const resCls = v.result === 'พบปัญหา' ? 'st-back' : v.result === 'ติดตามไม่ได้' ? 'st-unreach' : 'st-done';
+    return `<div class="visit-card"><div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-2">
+        <div class="fw-bold">ครั้งที่ ${esc(v.visitNo)} · ${thaiDate(v.visitDate)} <span class="sub fw-normal">· ${esc(v.method)} · ${esc(v.visitor)}</span></div>
+        <span class="st ${resCls}">${esc(v.result)}</span></div>
+      ${v.problem ? `<div class="mb-1"><b>ปัญหา:</b> ${esc(v.problem)} (${esc(v.urgency)})</div>` : ''}
+      ${v.unreachableReason ? `<div class="mb-1"><b>สาเหตุ:</b> ${esc(v.unreachableReason)}</div>` : ''}
+      <div style="font-size:15px">${parts || '<span class="sub">ไม่มีรายละเอียดการตรวจ</span>'}</div>
+      ${v.note ? `<div class="mt-1"><span class="sub">บันทึก:</span> ${esc(v.note)}</div>` : ''}
+      ${(v.attachments || []).length ? '<div class="mt-2">' + filesHtml(v.attachments, p.id) + '</div>' : ''}</div>`;
+  }).join('') + '</div>' : '<div class="sub">ยังไม่มีบันทึกการเยี่ยม</div>';
+
+  if (canVisit) h += `<div class="card-x mt-4" id="visitForm"><h2><i class="bi bi-2-circle-fill" style="color:var(--sky-ink)"></i> บันทึกผลการเยี่ยม / ตอบกลับ รพ.</h2>
+      ${formHtml(VISIT_SECTIONS, 'v_')}
+      <div class="row g-3 mt-1"><div class="col-12 col-md-6"><label class="form-label" for="visitFiles">แนบรูปถ่ายการเยี่ยม (JPG/PNG/PDF ไม่เกิน 5 MB, สูงสุด 5 ไฟล์)</label>
+        <input class="form-control" id="visitFiles" type="file" multiple accept=".jpg,.jpeg,.png,.pdf"></div></div>
+      <div class="d-flex justify-content-end mt-3"><button class="btn btn-green px-4" type="button" id="btnVisit"><i class="bi bi-send-fill"></i> ส่งผลการเยี่ยมกลับ รพ.</button></div></div>`;
+  else h += '<div class="sub mt-3"><i class="bi bi-lock"></i> เคสนี้ปิดแล้ว</div>';
+
+  $('#tabVisit').innerHTML = h;
+  bindFileButtons($('#tabVisit'));
+  if (canAck) {
+    $('#ackBy').value = auth.user.role === 'rpst' ? '' : auth.user.displayName;
+    $('#btnAck').addEventListener('click', e => acknowledge(e.currentTarget));
+  }
+  if (canVisit) {
+    const vf = $('#visitForm');
+    const doneNos = current.visits.filter(v => v.result !== 'ติดตามไม่ได้').map(v => +v.visitNo);
+    const next = [1, 2, 3].find(n => !doneNos.includes(n)) || 3;
+    fillForm(vf, { visitNo: String(next), visitDate: todayISO(), method: 'เยี่ยมบ้าน', visitor: p.ackBy || '' });
+    $$('[name="visitDate"],[name="nextVaccineDate"]', vf).forEach(el => el.max = el.name === 'visitDate' ? todayISO() : '');
+    syncShow(vf);
+    vf.addEventListener('change', () => syncShow(vf));
+    $('#btnVisit').addEventListener('click', e => submitVisit(e.currentTarget));
+  }
+}
+
+async function acknowledge(btn) {
+  const ackBy = $('#ackBy').value.trim();
+  if (!ackBy) { $('#ackBy').classList.add('is-invalid'); $('#ackBy').focus(); return; }
+  await busy(btn, 'กำลังบันทึก', async () => {
+    try {
+      const res = await api('acknowledgeCase', { id: current.patient.id, ackBy, ackPhone: $('#ackPhone').value.trim() });
+      if (!res.success) throw new Error(res.message);
+      toast.fire({ icon: 'success', title: res.message });
+      await afterChange();
+    } catch (err) { fail(err); }
+  });
+}
+
+async function submitVisit(btn) {
+  const vf = $('#visitForm');
+  if (!validateRequired(vf)) return;
+  const d = readForm(vf);
+  const p = current.patient;
+  if (d.visitDate < p.deliveryDate) { Swal.fire(Object.assign({ icon: 'warning', title: 'วันที่เยี่ยมต้องไม่ก่อนวันคลอด' }, swalColor)); return; }
+  if (d.result !== 'พบปัญหา') { d.problem = ''; d.urgency = ''; }
+  if (d.result !== 'ติดตามไม่ได้') d.unreachableReason = '';
+  if (d.q2 !== 'ผิดปกติ') d.q9Score = '';
+  let fileList;
+  try { fileList = checkFiles($('#visitFiles').files, 5); } catch (err) { return fail(err); }
+
+  const confirm = await Swal.fire(Object.assign({
+    icon: d.result === 'พบปัญหา' ? 'warning' : 'question',
+    title: d.result === 'พบปัญหา' ? 'ยืนยันส่งกลับ รพ.?' : 'ยืนยันบันทึกผลการเยี่ยม?',
+    html: `ครั้งที่ ${esc(d.visitNo)} · ${thaiDate(d.visitDate)}<br>ผล: <b>${esc(d.result)}</b>${d.problem ? '<br>ปัญหา: ' + esc(d.problem) : ''}`,
+    showCancelButton: true, confirmButtonText: 'บันทึกและส่งกลับ', cancelButtonText: 'ตรวจสอบอีกครั้ง', reverseButtons: true
+  }, swalColor));
+  if (!confirm.isConfirmed) return;
+
+  await busy(btn, 'กำลังบันทึก...', async () => {
+    try {
+      const files = await Promise.all(fileList.map(toB64));
+      const res = await api('addHomeVisit', { patientId: p.id, data: d, files });
+      if (!res.success) throw new Error(res.message);
+      Swal.fire(Object.assign({ icon: 'success', title: 'บันทึกเรียบร้อย', text: 'สถานะเคส: ' + res.data.status, timer: 2200 }, swalColor));
+      await afterChange();
+      bootstrap.Tab.getOrCreateInstance($('[data-bs-target="#tabVisit"]')).show();
+    } catch (err) { fail(err); }
+  });
+}
+
+/* ---------- แท็บแก้ไข (admin/hospital) ---------- */
+function renderEditTab() {
+  const p = current.patient;
+  $('#tabEdit').innerHTML = `<div id="editForm">${formHtml(PATIENT_SECTIONS, 'e_')}
+    <div class="sec-title">ไฟล์แนบ</div>
+    ${(p.attachments || []).length ? '<div class="d-flex flex-column gap-2 mb-2">' + p.attachments.map(f => `
+      <div class="form-check"><input class="form-check-input rm-file" type="checkbox" id="rm_${esc(f.id)}" value="${esc(f.id)}">
+      <label class="form-check-label" for="rm_${esc(f.id)}">ลบไฟล์: ${esc(f.name)}</label></div>`).join('') + '</div>' : '<div class="sub mb-2">ไม่มีไฟล์แนบ</div>'}
+    <label class="form-label" for="editFiles">เพิ่มไฟล์ใหม่ (รวมไม่เกิน 5 ไฟล์)</label>
+    <input class="form-control" id="editFiles" type="file" multiple accept=".jpg,.jpeg,.png,.pdf">
+    ${(p.babiesExtra || []).length ? '<div class="sub mt-2">ข้อมูลทารกคนที่ 2 ขึ้นไปคงเดิม (แก้ไขที่ชีต Patients ได้หากจำเป็น)</div>' : ''}
+    <div class="d-flex justify-content-end gap-2 mt-4"><button class="btn btn-soft" type="button" id="btnEditCancel">ยกเลิก</button>
+      <button class="btn btn-pink px-4" type="button" id="btnEditSave"><i class="bi bi-save"></i> บันทึกการแก้ไข</button></div></div>`;
+  const ef = $('#editForm');
+  const data = Object.assign({}, p, { riskFactors: p.riskFactorsList, careItems: p.careItemsList });
+  fillForm(ef, data);
+  syncShow(ef);
+  ef.addEventListener('change', () => syncShow(ef));
+  $('#btnEditCancel').addEventListener('click', () => { renderEditTab(); bootstrap.Tab.getOrCreateInstance($('[data-bs-target="#tabInfo"]')).show(); });
+  $('#btnEditSave').addEventListener('click', e => saveEdit(e.currentTarget));
+}
+
+async function saveEdit(btn) {
+  const ef = $('#editForm');
+  if (!validateRequired(ef)) return;
+  const d = readForm(ef);
+  const removeFileIds = $$('.rm-file:checked', ef).map(c => c.value);
+  const remain = (current.patient.attachments || []).length - removeFileIds.length;
+  let fileList;
+  try { fileList = checkFiles($('#editFiles').files, 5 - remain); } catch (err) { return fail(err); }
+  const ok = await Swal.fire(Object.assign({ icon: 'question', title: 'บันทึกการแก้ไข?', showCancelButton: true, confirmButtonText: 'บันทึก', cancelButtonText: 'ยกเลิก' }, swalColor));
+  if (!ok.isConfirmed) return;
+  await busy(btn, 'กำลังบันทึก...', async () => {
+    try {
+      const files = await Promise.all(fileList.map(toB64));
+      const res = await api('updatePatient', { id: current.patient.id, data: d, files, removeFileIds });
+      if (!res.success) throw new Error(res.message);
+      toast.fire({ icon: 'success', title: res.message });
+      await afterChange();
+      bootstrap.Tab.getOrCreateInstance($('[data-bs-target="#tabInfo"]')).show();
+    } catch (err) { fail(err); }
+  });
+}
+
+/* ---------- ปิดเคส / ลบ ---------- */
+async function closeCase(btn) {
+  const r = await Swal.fire(Object.assign({ icon: 'question', title: 'ปิดเคสนี้?', input: 'text', inputPlaceholder: 'หมายเหตุ (ถ้ามี)',
+    showCancelButton: true, confirmButtonText: 'ปิดเคส', cancelButtonText: 'ยกเลิก' }, swalColor));
+  if (!r.isConfirmed) return;
+  await busy(btn, 'กำลังปิด', async () => {
+    try {
+      const res = await api('closeCase', { id: current.patient.id, note: r.value || '' });
+      if (!res.success) throw new Error(res.message);
+      toast.fire({ icon: 'success', title: res.message });
+      await afterChange();
+    } catch (err) { fail(err); }
+  });
+}
+
+async function deleteCase(btn) {
+  const p = current.patient;
+  const r = await Swal.fire({ icon: 'warning', title: 'ลบข้อมูลเคสนี้ถาวร?',
+    html: `ข้อมูลของ <b>${esc(p.motherName)}</b> (HN ${esc(p.hn)}) รวมบันทึกเยี่ยมบ้านและไฟล์แนบจะถูกลบ<br>พิมพ์ HN เพื่อยืนยัน`,
+    input: 'text', inputPlaceholder: p.hn, showCancelButton: true, confirmButtonText: 'ลบถาวร', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#dc3545',
+    preConfirm: v => v === p.hn || Swal.showValidationMessage('HN ไม่ตรงกัน') });
+  if (!r.isConfirmed) return;
+  await busy(btn, 'กำลังลบ', async () => {
+    try {
+      const res = await api('deletePatient', { id: p.id });
+      if (!res.success) throw new Error(res.message);
+      caseModal.hide();
+      toast.fire({ icon: 'success', title: res.message });
+      loadCases(); loadStats();
+    } catch (err) { fail(err); }
+  });
+}
+
+/** หลังมีการเปลี่ยนแปลง: โหลดเคส รายชื่อ และสถิติใหม่ */
+async function afterChange() {
+  await reloadCase(current.patient.id);
+  loadCases(); loadStats();
+}
+
+/* =========================================================================
+   8) เริ่มต้นหน้า
+   ========================================================================= */
+$('#lnkForm').href = FORM_PAGE;
+$('#fySelect').addEventListener('change', loadStats);
+$('#btnRefresh').addEventListener('click', e => busy(e.currentTarget, 'กำลังโหลด', async () => { await Promise.all([loadStats(), loadCases()]); }));
+setAuth(auth);
+loadStats();
+if (auth) loadCases();
+setInterval(() => { if (!document.hidden) loadStats(); }, 5 * 60 * 1000); // รีเฟรชสถิติทุก 5 นาที
+</script>
+</body>
+</html>
