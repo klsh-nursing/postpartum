@@ -212,7 +212,7 @@
     <form class="modal-content" id="loginForm" novalidate>
       <div class="modal-body p-4">
         <div class="text-center mb-3"><h2 class="h4 fw-bold mb-1" id="loginTitle">เข้าสู่ระบบ</h2>
-          <div class="sub">เจ้าหน้าที่ รพ.กมลาไสย และ รพ.สต.</div></div>
+          <div class="sub" id="loginHint">เจ้าหน้าที่ รพ.กมลาไสย และ รพ.สต.</div></div>
         <div class="mb-3"><label class="form-label" for="lgUser">Username</label><input class="form-control" id="lgUser" autocomplete="username"></div>
         <div class="mb-3"><label class="form-label" for="lgPass">Password</label><input class="form-control" id="lgPass" type="password" autocomplete="current-password"></div>
         <button class="btn btn-pink w-100" type="submit" id="lgBtn">เข้าสู่ระบบ</button>
@@ -559,6 +559,7 @@ $('#loginForm').addEventListener('submit', (e) => {
           showCancelButton: true, confirmButtonText: 'เปลี่ยนตอนนี้', cancelButtonText: 'ภายหลัง' }, swalColor)).then(r => { if (r.isConfirmed) changePassword(); });
       }
       loadCases();
+      openPending(); // มาจากลิงก์ LINE → เปิดเคสนั้นต่อทันที
     } catch (err) { Swal.fire(Object.assign({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: err.message }, swalColor)); }
   });
 });
@@ -808,13 +809,27 @@ function bindFileButtons(root) {
    ========================================================================= */
 let current = null; // { patient, visits, logs, canEdit }
 
-async function openCase(id) {
+async function openCase(id, fromLink) {
   $('#caseTitle').textContent = 'กำลังโหลด...';
   $('#caseSubTitle').textContent = ''; $('#caseBadges').innerHTML = ''; $('#caseActions').innerHTML = '';
   ['#tabInfo', '#tabVisit', '#tabLog', '#tabEdit'].forEach(s => $(s).innerHTML = '<div class="text-center py-5"><span class="spinner-border text-danger"></span></div>');
   bootstrap.Tab.getOrCreateInstance($('[data-bs-target="#tabInfo"]')).show();
   caseModal.show();
   await reloadCase(id);
+  // เปิดจากลิงก์ LINE โดย รพ.สต. → ไปที่แท็บรับเรื่อง/บันทึกเยี่ยมทันที
+  if (fromLink && current && auth && auth.user.role === 'rpst') {
+    bootstrap.Tab.getOrCreateInstance($('[data-bs-target="#tabVisit"]')).show();
+  }
+}
+
+/* ---------- เปิดเคสจากลิงก์ในข้อความ LINE (dashboard.html?case=รหัสเคส) ---------- */
+let pendingCase = new URLSearchParams(location.search).get('case');
+if (location.search) history.replaceState(null, '', location.pathname); // ล้างพารามิเตอร์ออกจากแถบที่อยู่
+function openPending() {
+  if (!pendingCase || !auth) return;
+  const id = pendingCase; pendingCase = null;
+  $('#loginHint').textContent = 'เจ้าหน้าที่ รพ.กมลาไสย และ รพ.สต.';
+  openCase(id, true);
 }
 
 async function reloadCase(id) {
@@ -1068,7 +1083,12 @@ $('#fySelect').addEventListener('change', loadStats);
 $('#btnRefresh').addEventListener('click', e => busy(e.currentTarget, 'กำลังโหลด', async () => { await Promise.all([loadStats(), loadCases()]); }));
 setAuth(auth);
 loadStats();
-if (auth) loadCases();
+if (auth) { loadCases(); openPending(); }
+else if (pendingCase) {
+  // ยังไม่ Login แต่กดมาจากข้อความแจ้งเตือน → ขึ้นหน้า Login ทันที
+  $('#loginHint').innerHTML = '<b style="color:var(--pink-dark)">กรุณาเข้าสู่ระบบเพื่อเปิดเคสที่ได้รับแจ้ง</b>';
+  loginModal.show();
+}
 setInterval(() => { if (!document.hidden) loadStats(); }, 5 * 60 * 1000); // รีเฟรชสถิติทุก 5 นาที
 </script>
 </body>
